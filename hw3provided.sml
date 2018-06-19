@@ -37,7 +37,7 @@ datatype typ = Anything
 (**** you can put all your code here ****)
 
 (* 1 *)
-fun only_capitals xs = List.filter (fn x => Char.isUpper(String.sub(x, 0))) xs
+fun only_capitals xs = List.filter (fn x => (Char.isUpper o String.sub) (x, 0) ) xs
 
 (* 2 *)
 fun longest_string1 xs = List.foldl (fn (c, a) => if String.size c > String.size a then c else a) "" xs
@@ -48,9 +48,9 @@ fun longest_string2 xs = List.foldl (fn (c, a) => if String.size c >= String.siz
 (* 4 *)				    
 fun longest_string_helper f = List.foldl (fn (c, acc) => if f (String.size c, String.size acc) then c else acc) ""
 
-val longest_string3 = longest_string_helper (fn (c, a) => c > a)
+val longest_string3 = longest_string_helper op>
 					    
-val longest_string4 = longest_string_helper (fn (c, a) => c >= a)
+val longest_string4 = longest_string_helper op>=
 					    					 (* 5 *)
 val longest_capitalized = longest_string1 o only_capitals
 
@@ -98,7 +98,7 @@ fun check_pat p =
 	  | check_unique (h::tl) = not (List.exists (fn s => s = h) tl) andalso check_unique tl
 	    	   
     in
-	check_unique(extract_variable(p, []))
+	(check_unique o extract_variable) (p, [])
     end
 
 (* 11 *)
@@ -108,10 +108,8 @@ fun match (v, p) =
       | (Variable s, v) => SOME [(s,v)]
       | (UnitP, Unit) => SOME []
       | (ConstP y, Const x) => if x = y then SOME [] else NONE
-      | (TupleP ps, Tuple vs) => if List.length vs = List.length ps
-				 then
-				     all_answers match (ListPair.zip (vs, ps))
-				 else NONE
+      | (TupleP ps, Tuple vs) => all_answers match (ListPair.zip (Vs, ps))
+					     handle UnequalLengths => NONE
       | (ConstructorP(s1,p), Constructor (s2,v)) => if s1 = s2
 						    then match (v, p)
 						    else NONE
@@ -122,7 +120,3 @@ fun first_match v ps =
     SOME (first_answer (fn p => match(v, p)) ps)
     handle
     NoAnswer => NONE
-
-	
-	  
-	
