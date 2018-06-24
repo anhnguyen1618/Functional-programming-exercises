@@ -59,13 +59,9 @@ fun month_range (first_day: int, second_day: int) =
 fun oldest [] = NONE
   | oldest (h::[]) = SOME h
   | oldest (h::t) =
-    let
-	val tail_max = oldest t
-    in
-	case tail_max of
-	    NONE => NONE
-	  | SOME v => if is_older(h, v) then SOME h else tail_max
-    end
+    case oldest t of
+	NONE => NONE
+      | SOME v => if is_older(h, v) then SOME h else SOME v
 	    
 
 (* Challenge problem session*)
