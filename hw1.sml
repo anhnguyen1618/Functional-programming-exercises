@@ -1,76 +1,42 @@
-fun is_older(first_date : (int * int * int), second_date: (int * int * int)) =
+fun is_older ((year1, month1, day1), (year2, month2, day2)) =
     let
-	val year_gap = (#1 first_date) - (#1 second_date)
-	val month_gap = (#2 first_date) - (#2 second_date)
-	val day_gap = (#3 first_date) - (#3 second_date)
+	val [year_gap, month_gap, day_gap] = [year1 - year2, month1 - month2, day1 - day2]
     in
 	year_gap < 0
 	orelse (year_gap = 0 andalso month_gap < 0)
 	orelse (year_gap = 0 andalso month_gap = 0 andalso day_gap < 0)
     end;
 
-fun number_in_month(dates: (int * int * int) list, month: int) =
-    let
-	fun get_number_in_month(dates: (int * int * int) list) =
-	    if null dates then 0
-	    else
-		let
-		    val cur_date = hd dates
-		    val cur_month = (#2 cur_date)
-		    val temp_number = get_number_in_month(tl dates)
-		in
-		    if cur_month = month then 1 + temp_number
-		    else temp_number
-		end
-    in
-	get_number_in_month(dates)
-    end;
+fun number_in_month (dates, month) =
+    List.foldl (fn ((_, m, _), acc) => acc + (if m = month then 1 else 0)) 0 dates
 
-fun number_in_months(dates: (int * int * int) list, months: int list) =
-    if null months orelse null dates then 0
-    else
-	number_in_month(dates, (hd months)) + number_in_months(dates, tl months)    
+fun number_in_months (dates, months) =
+    List.foldl (fn (x, acc) => number_in_month(dates, x) + acc) 0 months
+							    
+fun dates_in_month (dates, month) =
+    List.filter (fn (_, m, _) => m = month) dates
 
-fun dates_in_month(dates: (int * int * int) list, month: int) =
-    let
-	fun get_dates_in_month(dates: (int * int * int) list) =
-	    if null dates then []
-	    else
-		let
-		    val cur_date = hd dates
-		    val cur_month = (#2 cur_date)
-		    val temp_dates = get_dates_in_month(tl dates)
-		in
-		    if cur_month = month then cur_date::temp_dates
-		    else temp_dates
-		end
-    in
-	get_dates_in_month(dates)
-    end;
+fun dates_in_months (dates, months) =
+    List.foldl (fn (month, acc) => acc@dates_in_month(dates, month)) [] months
 
-fun dates_in_months(dates: (int * int * int) list, months: int list) =
-    if null months orelse null dates then []
-    else
-	dates_in_month(dates, (hd months))@dates_in_months(dates, tl months)    
+exception NotFound
+fun get_nth (h::_, 1) = h
+  | get_nth (h::t, n) = get_nth(t, n - 1)
+  | get_nth (_, _) = raise NotFound
 
-fun get_nth(string_list: string list, n: int) =
-    if n = 1
-    then hd string_list
-    else get_nth(tl string_list, n - 1)
-
-fun date_to_string(dates: (int * int * int)) =
+fun date_to_string (y, m, d) =
     let
 	val months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
     in
-	get_nth(months, (#2 dates)) ^ " " ^ Int.toString(#3 dates) ^ ", " ^ Int.toString(#1 dates)
+	get_nth(months, m) ^ " " ^ Int.toString(d) ^ ", " ^ Int.toString(y)
     end
 
-fun number_before_reaching_sum(sum: int, num_list: int list) =
-    if sum <= hd num_list
-    then 1
-    else 1 + number_before_reaching_sum(sum, num_list)
+fun number_before_reaching_sum (sum, num_list) =
+    case num_list of
+	[] => 0
+      | h::t => if sum <= h then 0 else number_before_reaching_sum(sum - h, t) + 1
 	
-fun what_month(date: int) =
+fun what_month date =
     let
 	val num_of_days_in_month = [31,28,31,30,31,30,31,31,30,31,30,31]
     in
@@ -78,7 +44,7 @@ fun what_month(date: int) =
     end
 
 
-fun month_range(first_day: int, second_day: int) =
+fun month_range (first_day: int, second_day: int) =
     if first_day > second_day then []
     else
 	let
@@ -90,73 +56,46 @@ fun month_range(first_day: int, second_day: int) =
 	    get_months(first_day)
 	end
 
-fun oldest(dates: (int * int * int) list) =
-    if null dates then NONE
-    else
-	let
-	    fun find_oldest(dates: (int * int * int) list) =
-		if null (tl dates) then hd dates
-		else
-		    let
-			val cur_date = hd dates
-			val tempValue = find_oldest(tl dates)
-		    in
-			if is_older(cur_date, tempValue)
-			then cur_date
-			else tempValue
-		    end
-	in
-	    SOME(find_oldest(dates))
-	end	    
+fun oldest [] = NONE
+  | oldest (h::[]) = SOME h
+  | oldest (h::t) =
+    let
+	val tail_max = oldest t
+    in
+	case tail_max of
+	    NONE => NONE
+	  | SOME v => if is_older(h, v) then SOME h else tail_max
+    end
 	    
 
 (* Challenge problem session*)
 	    
-fun unique(item_list: int list) =
-    if null item_list then []
-    else
-	let
-	    fun is_in(item_list: int list, item: int) = not (null item_list) andalso ((hd item_list = item) orelse is_in(tl item_list, item));
-	    val unique_list = unique(tl item_list)
-	in
-	    if is_in(unique_list, hd item_list)
-	    then unique_list
-	    else (hd item_list):: unique_list
- 	end
-
-fun number_in_months_challenge(dates: (int * int * int) list, months: int list) =
-    if null months orelse null dates then 0
-    else
-	number_in_months(dates, unique(months))
-	
-fun dates_in_months_challenge(dates: (int * int * int) list, months: int list) =
-    if null months orelse null dates then []
-    else
-	dates_in_months(dates, unique(months))
-    
-fun reasonable_date(date: (int * int * int)) =
+fun unique [] = []
+  | unique (h::t) =
     let
-	val year = #1 date
-	val month = #2 date
-	val day = #3 date
-	val is_leap_year = year mod 400 = 0 orelse (year mod 4 = 0 andalso year mod 100 <> 0)
-	val num_of_days_in_month = [31,28,31,30,31,30,31,31,30,31,30,31]						       
-	fun get_int_nth(int_list: int list, n: int) =
-	    let
-		fun get_real_nth(int_list: int list, cur: int) =
-		    if cur = n
-		    then hd int_list
-		    else get_real_nth(tl int_list, cur + 1)
-	    in
-		get_real_nth(int_list, 1)
-	    end
-
+	fun is_in xs x = List.foldl (fn (cur, acc) => acc andalso cur = x) true xs
+	val unique_list = unique t
     in
-	if year < 1 orelse (month < 1 orelse month >12) orelse (day < 0 orelse day > 31)
-	then false
-	else
-	    if month = 2 andalso is_leap_year
-	    then day <= 29
-	    else day <= get_int_nth(num_of_days_in_month, month)
+	if is_in unique_list h
+	then unique_list
+	else h:: unique_list
+    end
+
+fun number_in_months_challenge ([], []) = 0
+  | number_in_months_challenge (dates, months) = number_in_months(dates, unique(months))
+	
+fun dates_in_months_challenge ([], []) = []
+  | dates_in_months_challenge (dates, months) = dates_in_months(dates, unique(months))
+							       
+fun reasonable_date (year, month, day) =
+    let
+	val is_leap_year = year mod 400 = 0 orelse (year mod 4 = 0 andalso year mod 100 <> 0)
+	val num_of_days_in_month = [31,(if is_leap_year then 29 else 28),31,30,31,30,31,31,30,31,30,31]						       
+    in
+	not (
+	    year < 1
+	    orelse (month < 1 orelse month >12)
+	    orelse (day < 0 orelse day > get_nth(num_of_days_in_month, month))
+	)
     end
     
