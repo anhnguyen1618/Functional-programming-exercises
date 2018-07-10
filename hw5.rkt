@@ -147,25 +147,24 @@
 
 ;; We will test this function directly, so it must do
 ;; as described in the assignment
-(define (free-vars-helper e not-free)
-  ;;(println not-free)
-  ;;(print e)
-  (let ([f (lambda (g e) (free-vars-helper (g e) not-free))])
+(define (free-vars-helper e)
+  (let ([f (lambda (g e) (free-vars-helper (g e)))])
     (cond [(fun? e)
            (let* ([arg (fun-formal e)]
                  [body (fun-body e)]
-                 [s (free-vars-helper body (set-add not-free arg))])
-             (cons (fun-challenge (fun-nameopt e) arg (car s) (cdr s)) (cdr s)))]
+                 [s (free-vars-helper body)]
+                 [freevars (set-remove (cdr s) arg)])
+             (cons (fun-challenge (fun-nameopt e) arg (car s) freevars) freevars))]
           [(var? e)
-           (cons e (if (set-member? not-free (var-string e)) (set) (set (var-string e))))]
+           (cons e (set (var-string e)))]
           [(mlet? e)
            (let* ([name (mlet-var e)]
                   [val (mlet-e e)]
                   [body (mlet-body e)]
-                  [s1 (free-vars-helper val not-free)]
-                  [s2 (free-vars-helper body (set-add not-free name))])
+                  [s1 (free-vars-helper val)]
+                  [s2 (free-vars-helper body)])
                (cons (mlet name (car s1) (car s2))
-                     (set-union (cdr s1) (cdr s2))))]
+                     (set-union (cdr s1) (set-remove (cdr s2) name))))]
           [(add? e)
            (let ([s1 (f add-e1 e)]
                  [s2 (f add-e2 e)])
@@ -203,7 +202,7 @@
   
 
 (define (compute-free-vars e)
-  (car (free-vars-helper e (set))))
+  (car (free-vars-helper e)))
   
                
  
@@ -211,7 +210,14 @@
 ;; Do NOT share code with eval-under-env because that will make
 ;; auto-grading and peer assessment more difficult, so
 ;; copy most of your interpreter here and make minor changes
+
+(define (compute-env env freevars)
+  (set-map freevars (lambda (x) (cons x (envlookup env x)))))
+  
+
 (define (eval-under-env-c e env)
+  (println e)
+  (println env)
   (cond [(var? e) 
          (envlookup env (var-string e))]
         [(add? e) 
@@ -257,9 +263,10 @@
                         (if (var? fn-call)
                             (cons (cons (var-string fn-call) clojure) clojure-env) ;; Add bindings for recursive call
                             clojure-env))]
-                [arg-name (fun-formal fn)]
-                [fn-body (fun-body fn)])
-           (eval-under-env-c fn-body (cons (cons arg-name arg) envi)))]
+                [reduced-envi (compute-env envi (fun-challenge-freevars fn))]
+                [arg-name (fun-challenge-formal fn)]
+                [fn-body (fun-challenge-body fn)])
+           (eval-under-env-c fn-body (cons (cons arg-name arg) reduced-envi)))]
         [(apair? e)
          (apair (eval-under-env-c (apair-e1 e) env) (eval-under-env-c (apair-e2 e) env))]
         [(fst? e) (let ([pair (eval-under-env-c (fst-e e) env)])
@@ -267,7 +274,6 @@
         [(snd? e) (let ([pair (eval-under-env-c (snd-e e) env)])
                     (if (apair? pair) (apair-e2 pair) (error "MUPL snd applied to non-pair")))]
         [(isaunit? e) (if (aunit? (eval-under-env-c (isaunit-e e) env)) (int 1) (int 0))]
-        ;;
         [#t (error (format "bad MUPL expression: ~v" e))]))
 
 ;; Do NOT change this
