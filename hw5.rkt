@@ -153,7 +153,7 @@
            (let* ([arg (fun-formal e)]
                  [body (fun-body e)]
                  [s (free-vars-helper body)]
-                 [freevars (set-remove (cdr s) arg)])
+                 [freevars (set-remove (set-remove (cdr s) arg) (fun-nameopt e))])
              (cons (fun-challenge (fun-nameopt e) arg (car s) freevars) freevars))]
           [(var? e)
            (cons e (set (var-string e)))]
@@ -216,8 +216,6 @@
   
 
 (define (eval-under-env-c e env)
-  (println e)
-  (println env)
   (cond [(var? e) 
          (envlookup env (var-string e))]
         [(add? e) 
@@ -233,11 +231,9 @@
         [(closure? e) e]
         [(aunit? e) e]
         [(fun-challenge? e)
-         (let ([f-name (fun-challenge-nameopt e)]
-               [result (closure env e)])
-           (if (string? f-name)
-               (closure (cons (cons f-name result) env) e)
-               result))]
+         (let* ([freevars (fun-challenge-freevars e)]
+               [result (closure (compute-env env freevars) e)])
+           result)]
         [(ifgreater? e)
          (let ([v1 (eval-under-env-c (ifgreater-e1 e) env)]
                [v2 (eval-under-env-c (ifgreater-e2 e) env)])
@@ -254,19 +250,17 @@
                (eval-under-env-c (mlet-body e) (cons (cons name val) env)))
              (error "MUPL variable name has to be string"))]
         [(call? e)
-         (let* ([clojure (let ([clojure (eval-under-env-c (call-funexp e) env)])
+         (let* ([fn-call (call-funexp e)]
+                [clojure (let ([clojure (eval-under-env-c (call-funexp e) env)])
                            (if (closure? clojure) clojure (error "MUPL call applied to non-function")))]
+                [fn-name (if (var? fn-call)
+                             (var-string fn-call)
+                             (fun-challenge-nameopt fn-call))]
                 [arg (eval-under-env-c (call-actual e) env)]
                 [fn (closure-fun clojure)]
-                [envi (let ([fn-call (call-funexp e)]
-                            [clojure-env (closure-env clojure)])
-                        (if (var? fn-call)
-                            (cons (cons (var-string fn-call) clojure) clojure-env) ;; Add bindings for recursive call
-                            clojure-env))]
-                [reduced-envi (compute-env envi (fun-challenge-freevars fn))]
                 [arg-name (fun-challenge-formal fn)]
                 [fn-body (fun-challenge-body fn)])
-           (eval-under-env-c fn-body (cons (cons arg-name arg) reduced-envi)))]
+           (eval-under-env-c fn-body (cons (cons fn-name clojure) (cons (cons arg-name arg) (closure-env clojure)))))]
         [(apair? e)
          (apair (eval-under-env-c (apair-e1 e) env) (eval-under-env-c (apair-e2 e) env))]
         [(fst? e) (let ([pair (eval-under-env-c (fst-e e) env)])
