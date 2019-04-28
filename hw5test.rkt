@@ -9,6 +9,8 @@
 
 (require rackunit)
 
+(require "hw5.rkt")
+
 (define tests
   (test-suite
    "Sample tests for Assignment 5"
@@ -52,8 +54,20 @@
    (eval-exp (call (call mupl-mapAddN (int 7))
                    (racketlist->mupllist 
                     (list (int 3) (int 4) (int 9)))))) (list (int 10) (int 11) (int 16)) "combined test")
+
+    (check-equal? (eval-exp (call 
+                    (fun "fib" "x"
+                        (ifgreater (int 2) (var "x")
+                                    (var "x")
+                                    (add
+                                      (call (var "fib") (add (var "x") (int -1)))
+                                      (call (var "fib") (add (var "x") (int -2))))))
+                    (int 10)))
+                  (int 55) "test fib")
    
    ))
+
+
 
 (require rackunit/text-ui)
 ;; runs the test
